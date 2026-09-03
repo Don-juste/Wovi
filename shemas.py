@@ -86,5 +86,9 @@ class RefreshToken(BaseModel):
 
 class ConnexionAdmin(BaseModel):
     email: str
-    mot_de_passe: str                              
+    mot_de_passe: str     
+
+class FCMToken(BaseModel):
+    fcm_token: str    
+                             
         

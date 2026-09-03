@@ -12,6 +12,7 @@ class Utilisateur(Base):
     telephone = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     mot_de_passe = Column(String)
+    fcm_token = Column(String, nullable=True)
     code_pin = Column(String)
     solde = Column(Float, default=0.0)
     otp_code = Column(String, nullable=True)
