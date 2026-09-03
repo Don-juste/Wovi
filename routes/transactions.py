@@ -106,3 +106,10 @@ def enregistrer_token_fcm(data: shemas.FCMToken, current_utilisateur=Depends(get
     current_utilisateur.fcm_token = data.fcm_token
     db.commit()
     return {"Message": "Token FCM enregistré"}
+
+@router.get("/utilisateur/verifier-destinataire/{telephone}")
+def verifier_destinataire(telephone: str, current_utilisateur=Depends(get_current_utilisateur), db: Session = Depends(get_db)):
+    destinataire = db.query(models.Utilisateur).filter(models.Utilisateur.telephone == telephone).first()
+    if destinataire is None:
+        raise HTTPException(status_code=404, detail="Ce numéro n'existe pas dans notre système")
+    return {"nom": destinataire.nom, "prenom": destinataire.prenom}
