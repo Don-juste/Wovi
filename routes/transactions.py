@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from dependances import get_db, get_current_utilisateur
 import models
 import shemas
+from notifications import envoyer_notification
 from calculs import deduire_solde, ajouter_solde, creer_transaction, verifier_pin_utilisateur
 import logging
 
@@ -55,6 +56,12 @@ def transfert(data: shemas.TransfertRequest, current_utilisateur=Depends(get_cur
     creer_transaction(db, "transfert_entrant", data.montant, destinataire.id, current_utilisateur.id, solde_destinataire)
 
     db.commit()
+    
+    envoyer_notification(
+    destinataire.fcm_token,
+    "Argent reçu !",
+    f"Vous avez reçu {data.montant} FCFA de {current_utilisateur.nom} {current_utilisateur.prenom}"
+)
 
     logger.info(f"Transfert effectué : {current_utilisateur.telephone} → {destinataire.telephone}, montant : {data.montant}")
 
@@ -67,3 +74,35 @@ def consulter_solde(data: shemas.ConsulterSolde, current_utilisateur=Depends(get
     logger.info(f"Consultation solde : {current_utilisateur.telephone}")
 
     return {"solde": current_utilisateur.solde}
+
+@router.get("/utilisateur/historique-transactions")
+def historique_transactions(current_utilisateur=Depends(get_current_utilisateur), db: Session = Depends(get_db)):
+    transactions = db.query(models.Transaction).filter(
+        models.Transaction.utilisateur_id == current_utilisateur.id
+    ).order_by(models.Transaction.date.desc()).all()
+
+    resultat = []
+    for transaction in transactions:
+        item = {
+            "id": transaction.id,
+            "type": transaction.type,
+            "montant": transaction.montant,
+            "date": transaction.date,
+            "solde_apres": transaction.solde_apres
+        }
+
+        if transaction.autre_utilisateur_id is not None:
+            autre = db.query(models.Utilisateur).filter(models.Utilisateur.id == transaction.autre_utilisateur_id).first()
+            if autre:
+                item["autre_personne"] = f"{autre.nom} {autre.prenom}"
+                item["autre_telephone"] = autre.telephone
+
+        resultat.append(item)
+
+    return {"transactions": resultat}
+
+@router.put("/utilisateur/fcm-token")
+def enregistrer_token_fcm(data: shemas.FCMToken, current_utilisateur=Depends(get_current_utilisateur), db: Session = Depends(get_db)):
+    current_utilisateur.fcm_token = data.fcm_token
+    db.commit()
+    return {"Message": "Token FCM enregistré"}
